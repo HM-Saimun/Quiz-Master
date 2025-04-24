@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Quiz App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Start Screen -->
+        <div class="start-screen">
+            <h1>Quiz Master</h1>
+            <div class="settings">
+                <div class="setting-group">
+                    <label for="category">Select Category:</label>
+                    <select id="category" class="setting-select">
+                        <option value="general">General Knowledge</option>
+                        <option value="science">Science</option>
+                        <option value="history">History</option>
+                        <option value="geography">Geography</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="difficulty">Select Difficulty:</label>
+                    <select id="difficulty" class="setting-select">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="question-type">Question Type:</label>
+                    <select id="question-type" class="setting-select">
+                        <option value="multiple">Multiple Choice</option>
+                        <option value="boolean">True/False</option>
+                        <option value="fill">Fill in Blank</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="start-btn">Start Quiz</button>
+            
+            <div class="high-scores">
+                <h3>High Scores</h3>
+                <div class="scores-list"></div>
+            </div>
+        </div>
+        
+        <!-- Quiz Container -->
+        <div class="quiz-container hidden">
+            <header>
+                <div class="quiz-info">
+                    <span class="category-badge"><i class="fas fa-atom"></i> Science</span>
+                    <span class="difficulty-badge">Medium</span>
+                </div>
+                <div class="timer-score">
+                    <span class="timer"><i class="fas fa-clock"></i> 60</span>
+                    <span class="score"><i class="fas fa-star"></i> 0</span>
+                    <span class="progress">Question 1 of 10</span>
+                </div>
+                <button class="logout-btn" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </header>
+            
+            <div class="quiz-area">
+                <div class="question-container">
+                    <h2 class="question">Question text goes here?</h2>
+                    <div class="options-container">
+                        <!-- Options will be inserted by JavaScript -->
+                    </div>
+                    
+                    <!-- Fill in blank container -->
+                    <div class="fill-container hidden">
+                        <input type="text" class="fill-input" placeholder="Type your answer...">
+                        <button class="submit-fill">Submit</button>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="next-btn" disabled>Next Question</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Screen -->
+        <div class="results-container hidden">
+            <button class="logout-btn" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+            <div class="results-content">
+                <h2>Quiz Completed!</h2>
+                <div class="result-stats">
+                    <p>Final Score: <span class="final-score">0</span></p>
+                    <p>Correct Answers: <span class="correct-answers">0</span>/<span class="total-questions">0</span></p>
+                    <p>Time Remaining: <span class="time-remaining">0</span>s</p>
+                </div>
+                
+                <div class="result-badges">
+                    <div class="badge category-badge">
+                        <i class="fas fa-atom"></i>
+                        <span>Science</span>
+                    </div>
+                    <div class="badge difficulty-badge">
+                        <span>Medium</span>
+                    </div>
+                </div>
+                
+                <div class="result-actions">
+                    <button class="restart-btn">Restart Quiz</button>
+                    <button class="new-quiz-btn">New Quiz</button>
+                </div>
+                
+                <div class="feedback-form hidden">
+                    <h3>How was your experience?</h3>
+                    <div class="rating">
+                        <i class="far fa-star" data-rating="1"></i>
+                        <i class="far fa-star" data-rating="2"></i>
+                        <i class="far fa-star" data-rating="3"></i>
+                        <i class="far fa-star" data-rating="4"></i>
+                        <i class="far fa-star" data-rating="5"></i>
+                    </div>
+                    <textarea placeholder="Optional feedback..."></textarea>
+                    <button class="submit-feedback">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="questions.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Check authentication before allowing access
+        document.addEventListener('DOMContentLoaded', () => {
+            const rememberedUser = localStorage.getItem('currentUser');
+            const sessionUser = sessionStorage.getItem('currentUser');
+            
+            if (!rememberedUser && !sessionUser) {
+                window.location.href = 'index.html';
+            }
+            
+            // You can use the user data if needed
+            const currentUser = JSON.parse(rememberedUser || sessionUser);
+            console.log('Current user:', currentUser);
+        });
+    </script>
+</body>
+</html>

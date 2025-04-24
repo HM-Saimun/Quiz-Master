@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App - Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h1><i class="fas fa-user-shield"></i> Quiz Master</h1>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required placeholder="Enter your username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="Enter your password">
+                </div>
+                
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="rememberMe"> Remember me
+                    </label>
+                    <a href="#" id="forgotPassword">Forgot password?</a>
+                </div>
+                
+                <button type="submit" class="login-btn">Login</button>
+                
+                <div class="register-link">
+                    Don't have an account? <a href="#" id="registerLink">Register</a>
+                </div>
+            </form>
+            
+            <div id="message" class="message hidden"></div>
+        </div>
+        
+        <div class="register-card hidden">
+            <h1><i class="fas fa-user-plus"></i> Register</h1>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regUsername">Username</label>
+                    <input type="text" id="regUsername" required placeholder="Choose a username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="regEmail">Email</label>
+                    <input type="email" id="regEmail" required placeholder="Your email address">
+                </div>
+                
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" required placeholder="Create a password">
+                </div>
+                
+                <div class="form-group">
+                    <label for="regConfirmPassword">Confirm Password</label>
+                    <input type="password" id="regConfirmPassword" required placeholder="Confirm your password">
+                </div>
+                
+                <button type="submit" class="register-btn">Create Account</button>
+                
+                <div class="login-link">
+                    Already have an account? <a href="#" id="loginLink">Login</a>
+                </div>
+            </form>
+            
+            <div id="regMessage" class="message hidden"></div>
+        </div>
+        
+        <div class="reset-card hidden">
+            <h1><i class="fas fa-key"></i> Reset Password</h1>
+            
+            <form id="resetForm">
+                <div class="form-group">
+                    <label for="resetEmail">Email</label>
+                    <input type="email" id="resetEmail" required placeholder="Your registered email">
+                </div>
+                
+                <button type="submit" class="reset-btn">Send Reset Link</button>
+                
+                <div class="login-link">
+                    Remember your password? <a href="#" id="backToLogin">Back to login</a>
+                </div>
+            </form>
+            
+            <div id="resetMessage" class="message hidden"></div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>
