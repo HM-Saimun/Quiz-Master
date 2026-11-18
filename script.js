@@ -12,9 +12,16 @@ const startScreen = document.querySelector('.start-screen');
 const quizContainer = document.querySelector('.quiz-container');
 const resultsContainer = document.querySelector('.results-container');
 const startButton = document.querySelector('.start-btn');
-const categorySelect = document.getElementById('category');
+const nameDialog = document.querySelector('.name-dialog');
+const nameForm = document.getElementById('nameForm');
+const playerNameInput = document.getElementById('playerName');
+const nameError = document.querySelector('.name-error');
+const cancelJoinButton = document.querySelector('.cancel-join-btn');
+const joinButton = document.querySelector('.join-quiz-btn');
 const difficultySelect = document.getElementById('difficulty');
-const questionTypeSelect = document.getElementById('question-type');
+const timeBudgetSelect = document.getElementById('time-budget');
+const attemptedQuizCountElement = document.getElementById('attemptedQuizCount');
+const startStatus = document.querySelector('.start-status');
 const questionElement = document.querySelector('.question');
 const optionsContainer = document.querySelector('.options-container');
 const fillContainer = document.querySelector('.fill-container');
@@ -28,8 +35,12 @@ const categoryBadge = document.querySelector('.category-badge');
 const difficultyBadge = document.querySelector('.difficulty-badge');
 const finalScoreElement = document.querySelector('.final-score');
 const correctAnswersElement = document.querySelector('.correct-answers');
+const answeredQuestionsElements = document.querySelectorAll('.answered-questions');
 const totalQuestionsElement = document.querySelector('.total-questions');
+const timeBudgetResultElement = document.querySelector('.time-budget-result');
 const timeRemainingElement = document.querySelector('.time-remaining');
+const resultsHeading = document.querySelector('.results-heading');
+const quitButton = document.querySelector('.quit-btn');
 const restartButton = document.querySelector('.restart-btn');
 const newQuizButton = document.querySelector('.new-quiz-btn');
 const feedbackForm = document.querySelector('.feedback-form');
@@ -37,10 +48,9 @@ const ratingStars = document.querySelectorAll('.rating i');
 const feedbackTextarea = document.querySelector('.feedback-form textarea');
 const submitFeedbackButton = document.querySelector('.submit-feedback');
 const scoresList = document.querySelector('.scores-list');
-const logoutButton = document.querySelector('.logout-btn');
+const sessionSaveStatus = document.querySelector('.session-save-status');
 
-// Get current user
-const currentUser = JSON.parse(localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser'));
+const SECONDS_PER_QUESTION = 15;
 
 // Quiz state
 let currentQuiz = {
@@ -48,21 +58,31 @@ let currentQuiz = {
     currentQuestionIndex: 0,
     score: 0,
     timer: null,
-    timeLeft: 60,
-    category: '',
+    timeLeft: 0,
+    category: 'mixed',
     difficulty: '',
-    questionType: '',
-    answeredCorrectly: 0
+    questionType: 'mixed',
+    timeBudgetMinutes: 5,
+    deadlineAtMs: 0,
+    answeredCorrectly: 0,
+    answeredQuestions: 0,
+    answeredCurrentQuestion: false,
+    isComplete: false,
+    playerName: '',
+    sessionId: null,
+    startedAtMs: 0
 };
-
-// High scores
-let highScores = JSON.parse(localStorage.getItem('quizHighScores')) || [];
+let attemptCountRequestId = 0;
 
 // Initialize the app
 function init() {
     displayHighScores();
-    startButton.addEventListener('click', startQuiz);
+    loadAttemptCount();
+    startButton.addEventListener('click', openNameDialog);
+    nameForm.addEventListener('submit', startQuiz);
+    cancelJoinButton.addEventListener('click', closeNameDialog);
     nextButton.addEventListener('click', nextQuestion);
+    quitButton.addEventListener('click', quitQuiz);
     restartButton.addEventListener('click', restartQuiz);
     newQuizButton.addEventListener('click', newQuiz);
     submitFillButton.addEventListener('click', checkFillAnswer);
@@ -81,61 +101,159 @@ function init() {
     submitFeedbackButton.addEventListener('click', submitFeedback);
 }
 
-// Display high scores
-function displayHighScores() {
-    scoresList.innerHTML = '';
-    
-    if (highScores.length === 0) {
-        scoresList.innerHTML = '<p>No scores yet</p>';
+async function openNameDialog() {
+    startButton.disabled = true;
+    startStatus.textContent = '';
+    const requestId = ++attemptCountRequestId;
+    try {
+        const response = await fetch('/api/stats/start', { method: 'POST' });
+        const stats = await response.json();
+        if (!response.ok) {
+            throw new Error(stats.error || 'Could not record this quiz attempt.');
+        }
+        if (requestId === attemptCountRequestId) {
+            attemptedQuizCountElement.textContent = stats.attemptedQuizCount;
+        }
+    } catch (error) {
+        console.error('Unable to count quiz attempt:', error);
+        startStatus.textContent = error.message;
         return;
+    } finally {
+        startButton.disabled = false;
     }
-    
-    // Sort by score (descending)
-    highScores.sort((a, b) => b.score - a.score);
-    
-    // Display top 5
-    highScores.slice(0, 5).forEach(score => {
-        const scoreItem = document.createElement('div');
-        scoreItem.className = 'score-item';
-        scoreItem.innerHTML = `
-            <span>${score.category} (${score.difficulty})</span>
-            <span>${score.score}/${score.total}</span>
-        `;
-        scoresList.appendChild(scoreItem);
-    });
+
+    nameError.textContent = '';
+    nameDialog.classList.remove('hidden');
+    playerNameInput.focus();
+}
+
+async function loadAttemptCount() {
+    const requestId = ++attemptCountRequestId;
+    try {
+        const response = await fetch('/api/stats');
+        const stats = await response.json();
+        if (!response.ok) {
+            throw new Error(stats.error || 'Could not load quiz attempts.');
+        }
+        if (requestId === attemptCountRequestId) {
+            attemptedQuizCountElement.textContent = stats.attemptedQuizCount;
+        }
+    } catch (error) {
+        console.error('Unable to load quiz attempt count:', error);
+        if (requestId === attemptCountRequestId) {
+            attemptedQuizCountElement.textContent = 'Unavailable';
+        }
+    }
+}
+
+function closeNameDialog() {
+    nameDialog.classList.add('hidden');
+}
+
+async function displayHighScores() {
+    scoresList.textContent = 'Loading scores...';
+    try {
+        const response = await fetch('/api/sessions?limit=5');
+        if (!response.ok) {
+            throw new Error('Unable to load recent scores.');
+        }
+        const sessions = await response.json();
+        scoresList.replaceChildren();
+        if (sessions.length === 0) {
+            scoresList.textContent = 'No completed quizzes yet';
+            return;
+        }
+
+        sessions.forEach(session => {
+            const scoreItem = document.createElement('div');
+            scoreItem.className = 'score-item';
+            const sessionInfo = document.createElement('span');
+            sessionInfo.textContent = `${session.player_name} - ${session.difficulty} (${session.time_budget_minutes} min)`;
+            const sessionScore = document.createElement('span');
+            sessionScore.textContent = `${session.score}/${session.total_questions}`;
+            scoreItem.append(sessionInfo, sessionScore);
+            scoresList.appendChild(scoreItem);
+        });
+    } catch (error) {
+        console.error('Unable to load recent quiz scores:', error);
+        scoresList.textContent = 'Unable to load scores';
+    }
 }
 
 // Start the quiz
-function startQuiz() {
-    const category = categorySelect.value;
-    const difficulty = difficultySelect.value;
-    const questionType = questionTypeSelect.value;
-    
-    // Get 20 random questions
-    let questions = getRandomQuestions(category, difficulty, 20);
-    
-    // If a specific question type is selected, filter those
-    if (questionType !== 'all') {
-        questions = questions.filter(q => q.type === questionType);
-        
-        // If we don't have enough questions after filtering, show warning
-        if (questions.length < 10) {
-            alert(`Only ${questions.length} ${questionType} questions available. Showing all types.`);
-            questions = getRandomQuestions(category, difficulty, 20);
-        }
+async function startQuiz(event) {
+    event.preventDefault();
+    const playerName = playerNameInput.value.trim();
+    if (!playerName || playerName.length > 80) {
+        nameError.textContent = 'Enter a name of 1 to 80 characters.';
+        playerNameInput.focus();
+        return;
     }
-    
-    // Set up quiz state
+
+    const difficulty = difficultySelect.value;
+    const timeBudgetMinutes = Number(timeBudgetSelect.value);
+    const questionCount = (timeBudgetMinutes * 60) / SECONDS_PER_QUESTION;
+    nameError.textContent = '';
+    joinButton.disabled = true;
+    cancelJoinButton.disabled = true;
+    let questions;
+    try {
+        const query = new URLSearchParams({ difficulty, count: String(questionCount) });
+        const response = await fetch(`/api/questions?${query}`);
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Could not load questions.');
+        }
+        questions = await response.json();
+        if (!Array.isArray(questions) || questions.length === 0) {
+            throw new Error('No questions are available for this selection.');
+        }
+
+        const sessionResponse = await fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playerName,
+                difficulty,
+                questionType: 'mixed',
+                totalQuestions: questions.length,
+                timeBudgetMinutes
+            })
+        });
+        const session = await sessionResponse.json();
+        if (!sessionResponse.ok) {
+            throw new Error(session.error || 'Could not create a quiz session.');
+        }
+        nameDialog.classList.add('hidden');
+        beginQuiz(questions, difficulty, timeBudgetMinutes, playerName, session.sessionId);
+    } catch (error) {
+        console.error('Unable to start quiz:', error);
+        nameError.textContent = error.message;
+    } finally {
+        joinButton.disabled = false;
+        cancelJoinButton.disabled = false;
+    }
+}
+
+function beginQuiz(questions, difficulty, timeBudgetMinutes, playerName, sessionId) {
     currentQuiz = {
         questions,
         currentQuestionIndex: 0,
         score: 0,
         timer: null,
-        timeLeft: 60 * 5, // 2 minutes for 20 questions
-        category,
+        timeLeft: timeBudgetMinutes * 60,
+        category: 'mixed',
         difficulty,
-        questionType,
-        answeredCorrectly: 0
+        questionType: 'mixed',
+        timeBudgetMinutes,
+        deadlineAtMs: Date.now() + timeBudgetMinutes * 60 * 1000,
+        answeredCorrectly: 0,
+        answeredQuestions: 0,
+        answeredCurrentQuestion: false,
+        isComplete: false,
+        playerName,
+        sessionId,
+        startedAtMs: Date.now()
     };
     
     // Update UI
@@ -144,19 +262,10 @@ function startQuiz() {
     resultsContainer.classList.add('hidden');
     
     // Set category and difficulty badges
-    const categoryIcon = categoryIcons[category];
-    categoryBadge.innerHTML = `<i class="fas ${categoryIcon}"></i> ${capitalizeFirstLetter(category)}`;
+    categoryBadge.innerHTML = '<i class="fas fa-globe"></i> All Categories';
     difficultyBadge.textContent = capitalizeFirstLetter(difficulty);
-    
-    // Set difficulty badge color
     difficultyBadge.className = 'difficulty-badge';
-    if (difficulty === 'easy') {
-        difficultyBadge.classList.add('easy');
-    } else if (difficulty === 'medium') {
-        difficultyBadge.classList.add('medium');
-    } else {
-        difficultyBadge.classList.add('hard');
-    }
+    difficultyBadge.classList.add(difficulty);
     
     // Start timer and show first question
     startTimer();
@@ -168,12 +277,19 @@ function showQuestion() {
     resetState();
     
     const currentQuestion = currentQuiz.questions[currentQuiz.currentQuestionIndex];
+    currentQuiz.answeredCurrentQuestion = false;
     const questionNumber = currentQuiz.currentQuestionIndex + 1;
     const totalQuestions = currentQuiz.questions.length;
     
     // Update progress
     progressElement.textContent = `Question ${questionNumber} of ${totalQuestions}`;
     scoreElement.textContent = `Score: ${currentQuiz.score}`;
+    const category = currentQuestion.category || currentQuiz.category;
+    categoryBadge.innerHTML = `<i class="fas ${categoryIcons[category] || categoryIcons.general}"></i> ${capitalizeFirstLetter(category)}`;
+    const questionDifficulty = currentQuestion.difficulty || currentQuiz.difficulty;
+    difficultyBadge.textContent = capitalizeFirstLetter(questionDifficulty);
+    difficultyBadge.className = 'difficulty-badge';
+    difficultyBadge.classList.add(questionDifficulty);
     
     // Display question
     questionElement.textContent = currentQuestion.question;
@@ -182,39 +298,8 @@ function showQuestion() {
     if (currentQuestion.type === 'multiple' || currentQuestion.type === 'boolean') {
         optionsContainer.classList.remove('hidden');
         fillContainer.classList.add('hidden');
-        optionsContainer.classList.remove('boolean-options');
-        
-        if (currentQuestion.type === 'boolean') {
-            optionsContainer.classList.add('boolean-options');
-        }
-        
-        currentQuestion.options.forEach(option => {
-            const button = document.createElement('button');
-            button.textContent = option;
-            button.classList.add('option-btn');
-            optionsContainer.appendChild(button);
-            
-            button.addEventListener('click', () => selectAnswer(option));
-        });
-    }
-    else if (currentQuestion.type === 'multiple') {
-        optionsContainer.classList.remove('hidden');
-        fillContainer.classList.add('hidden');
-        
-        currentQuestion.options.forEach(option => {
-            const button = document.createElement('button');
-            button.textContent = option;
-            button.classList.add('option-btn');
-            optionsContainer.appendChild(button);
-            
-            button.addEventListener('click', () => selectAnswer(option));
-        });
-    } 
-    else if (currentQuestion.type === 'boolean') {
-        optionsContainer.classList.remove('hidden');
-        fillContainer.classList.add('hidden');
-        optionsContainer.classList.add('boolean-options');
-        
+        optionsContainer.classList.toggle('boolean-options', currentQuestion.type === 'boolean');
+
         currentQuestion.options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
@@ -240,11 +325,22 @@ function resetState() {
         optionsContainer.removeChild(optionsContainer.firstChild);
     }
     optionsContainer.classList.remove('boolean-options');
+    fillContainer.classList.remove('correct', 'incorrect');
+    fillInput.disabled = false;
+    submitFillButton.disabled = false;
+    const correctAnswer = fillContainer.querySelector('p');
+    if (correctAnswer) {
+        fillContainer.removeChild(correctAnswer);
+    }
 }
 
 // Handle answer selection for MC/Boolean questions
 function selectAnswer(selectedOption) {
+    if (currentQuiz.isComplete || currentQuiz.answeredCurrentQuestion) return;
+    if (checkTimeExpired()) return;
     const currentQuestion = currentQuiz.questions[currentQuiz.currentQuestionIndex];
+    currentQuiz.answeredCurrentQuestion = true;
+    currentQuiz.answeredQuestions++;
     const options = optionsContainer.querySelectorAll('.option-btn');
     const correctAnswer = currentQuestion.answer;
     
@@ -267,7 +363,7 @@ function selectAnswer(selectedOption) {
     
     if (selectedOption === correctAnswer) {
         selectedButton.classList.add('correct');
-        currentQuiz.score += 10 * getDifficultyMultiplier();
+        currentQuiz.score += getQuestionPoints(currentQuestion);
         currentQuiz.answeredCorrectly++;
         scoreElement.textContent = `Score: ${currentQuiz.score}`;
     } else {
@@ -286,18 +382,22 @@ function selectAnswer(selectedOption) {
 
 // Check fill-in-the-blank answer
 function checkFillAnswer() {
+    if (currentQuiz.isComplete || currentQuiz.answeredCurrentQuestion) return;
+    if (checkTimeExpired()) return;
     const currentQuestion = currentQuiz.questions[currentQuiz.currentQuestionIndex];
     const userAnswer = fillInput.value.trim().toLowerCase();
     const correctAnswer = currentQuestion.answer.toLowerCase();
     
     if (userAnswer === '') return;
+    currentQuiz.answeredCurrentQuestion = true;
+    currentQuiz.answeredQuestions++;
     
     fillInput.disabled = true;
     submitFillButton.disabled = true;
     
     if (userAnswer === correctAnswer) {
         fillContainer.classList.add('correct');
-        currentQuiz.score += 10 * getDifficultyMultiplier();
+        currentQuiz.score += getQuestionPoints(currentQuestion);
         currentQuiz.answeredCorrectly++;
         scoreElement.textContent = `Score: ${currentQuiz.score}`;
     } else {
@@ -323,25 +423,51 @@ function getDifficultyMultiplier() {
     }
 }
 
+function getQuestionPoints(question) {
+    const points = Number(question.points);
+    return Number.isFinite(points) && question.points !== null && question.points !== undefined
+        ? points
+        : 10 * getDifficultyMultiplier();
+}
+
 // Timer functionality
 function startTimer() {
     clearInterval(currentQuiz.timer);
-    currentQuiz.timeLeft = 60 * 5;
-    timerElement.textContent = `Time: ${currentQuiz.timeLeft}`;
-    
+    updateTimerDisplay();
     currentQuiz.timer = setInterval(() => {
-        currentQuiz.timeLeft--;
-        timerElement.textContent = `Time: ${currentQuiz.timeLeft}`;
-        
+        currentQuiz.timeLeft = getTimeRemaining();
+        updateTimerDisplay();
         if (currentQuiz.timeLeft <= 0) {
             clearInterval(currentQuiz.timer);
-            endQuiz();
+            endQuiz('time_up');
         }
-    }, 5000);
+    }, 1000);
+}
+
+function getTimeRemaining() {
+    return Math.max(0, Math.ceil((currentQuiz.deadlineAtMs - Date.now()) / 1000));
+}
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(currentQuiz.timeLeft / 60);
+    const seconds = String(currentQuiz.timeLeft % 60).padStart(2, '0');
+    timerElement.textContent = `Time: ${minutes}:${seconds}`;
+}
+
+function checkTimeExpired() {
+    if (!currentQuiz.isComplete && currentQuiz.deadlineAtMs && getTimeRemaining() === 0) {
+        currentQuiz.timeLeft = 0;
+        updateTimerDisplay();
+        endQuiz('time_up');
+        return true;
+    }
+    return false;
 }
 
 // Move to next question or end quiz
 function nextQuestion() {
+    if (currentQuiz.isComplete) return;
+    if (checkTimeExpired()) return;
     currentQuiz.currentQuestionIndex++;
     if (currentQuiz.currentQuestionIndex < currentQuiz.questions.length) {
         showQuestion();
@@ -350,18 +476,19 @@ function nextQuestion() {
     }
 }
 
-// Add logout functionality (you can add a logout button in your quiz UI)
-function logout() {
-    localStorage.removeItem('currentUser');
-    sessionStorage.removeItem('currentUser');
-    window.location.href = 'index.html';
+function quitQuiz() {
+    if (currentQuiz.isComplete) return;
+    if (checkTimeExpired()) return;
+    const confirmed = window.confirm('Quit this quiz? Your results for answered questions will be saved.');
+    if (checkTimeExpired()) return;
+    if (confirmed) endQuiz('quit');
 }
 
-// Add event listener
-logoutButton.addEventListener('click', logout);
-
 // End quiz and show results
-function endQuiz() {
+function endQuiz(status = 'completed') {
+    if (currentQuiz.isComplete) return;
+    currentQuiz.timeLeft = getTimeRemaining();
+    currentQuiz.isComplete = true;
     clearInterval(currentQuiz.timer);
     quizContainer.classList.add('hidden');
     resultsContainer.classList.remove('hidden');
@@ -369,70 +496,105 @@ function endQuiz() {
     // Update results
     finalScoreElement.textContent = currentQuiz.score;
     correctAnswersElement.textContent = currentQuiz.answeredCorrectly;
+    answeredQuestionsElements.forEach(element => {
+        element.textContent = currentQuiz.answeredQuestions;
+    });
     totalQuestionsElement.textContent = currentQuiz.questions.length;
     timeRemainingElement.textContent = currentQuiz.timeLeft;
+    timeBudgetResultElement.textContent = currentQuiz.timeBudgetMinutes;
+    resultsHeading.textContent = status === 'quit'
+        ? 'Quiz quit'
+        : status === 'time_up' ? 'Time is up' : 'Quiz completed!';
     
-    // Update category and difficulty badges in results
-    const categoryIcon = categoryIcons[currentQuiz.category];
-    document.querySelector('.results-container .category-badge i').className = `fas ${categoryIcon}`;
-    document.querySelector('.results-container .category-badge span').textContent = capitalizeFirstLetter(currentQuiz.category);
+    document.querySelector('.results-container .category-badge i').className = 'fas fa-globe';
+    document.querySelector('.results-container .category-badge span').textContent = 'All Categories';
     
     const difficultyBadge = document.querySelector('.results-container .difficulty-badge');
     difficultyBadge.innerHTML = `<span>${capitalizeFirstLetter(currentQuiz.difficulty)}</span>`;
     difficultyBadge.className = 'badge difficulty-badge';
     difficultyBadge.classList.add(currentQuiz.difficulty);
 
-    // Update user stats
-    if (currentUser) {
-        currentUser.stats.quizzesTaken++;
-        if (currentQuiz.score > currentUser.stats.highScore) {
-            currentUser.stats.highScore = currentQuiz.score;
-        }
-        
-        // Update in storage
-        if (localStorage.getItem('currentUser')) {
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        } else {
-            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-        }
-        
-        // Update in users array
-        const users = JSON.parse(localStorage.getItem('quizAppUsers')) || [];
-        const userIndex = users.findIndex(u => u.username === currentUser.username);
-        if (userIndex !== -1) {
-            users[userIndex] = currentUser;
-            localStorage.setItem('quizAppUsers', JSON.stringify(users));
-        }
-    }
-    
-    // Save high score
-    saveHighScore();
+    saveQuizSession(status);
+}
 
-    const resultsLogoutBtn = document.querySelector('.results-container .logout-btn');
-    if (resultsLogoutBtn) {
-        resultsLogoutBtn.classList.remove('hidden');
+async function saveQuizSession(status) {
+    sessionSaveStatus.textContent = 'Saving your result...';
+    const resultBody = getSessionResult(status);
+    try {
+        const response = await fetch(`/api/sessions/${currentQuiz.sessionId}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(resultBody)
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Could not save your quiz result.');
+        }
+        sessionSaveStatus.textContent = 'Your result was saved.';
+        displayHighScores();
+    } catch (error) {
+        console.error('Unable to save quiz result:', error);
+        sessionSaveStatus.textContent = 'Your result could not be saved. Please tell the quiz host.';
     }
 }
 
-// Save high score to local storage
-function saveHighScore() {
-    const highScore = {
-        category: currentQuiz.category,
-        difficulty: currentQuiz.difficulty,
+function getSessionResult(status) {
+    return {
         score: currentQuiz.score,
-        total: currentQuiz.questions.length,
-        date: new Date().toISOString()
+        answeredQuestions: currentQuiz.answeredQuestions,
+        correctAnswers: currentQuiz.answeredCorrectly,
+        durationSeconds: Math.max(0, Math.round((Date.now() - currentQuiz.startedAtMs) / 1000)),
+        timeRemainingSeconds: currentQuiz.isComplete
+            ? currentQuiz.timeLeft
+            : getTimeRemaining(),
+        status
     };
-    
-    highScores.push(highScore);
-    localStorage.setItem('quizHighScores', JSON.stringify(highScores));
-    displayHighScores();
 }
+
+window.addEventListener('beforeunload', () => {
+    if (!currentQuiz.sessionId || currentQuiz.isComplete || !navigator.sendBeacon) return;
+    const status = getTimeRemaining() === 0 ? 'time_up' : 'abandoned';
+    const payload = new Blob(
+        [JSON.stringify(getSessionResult(status))],
+        { type: 'application/json' }
+    );
+    navigator.sendBeacon(`/api/sessions/${currentQuiz.sessionId}/complete`, payload);
+});
 
 // Restart the same quiz
-function restartQuiz() {
+async function restartQuiz() {
     feedbackForm.classList.add('hidden');
-    startQuiz();
+    restartButton.disabled = true;
+    const previousQuiz = currentQuiz;
+    try {
+        const response = await fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playerName: previousQuiz.playerName,
+                difficulty: previousQuiz.difficulty,
+                questionType: 'mixed',
+                totalQuestions: previousQuiz.questions.length,
+                timeBudgetMinutes: previousQuiz.timeBudgetMinutes
+            })
+        });
+        const session = await response.json();
+        if (!response.ok) {
+            throw new Error(session.error || 'Could not create a new quiz session.');
+        }
+        beginQuiz(
+            previousQuiz.questions,
+            previousQuiz.difficulty,
+            previousQuiz.timeBudgetMinutes,
+            previousQuiz.playerName,
+            session.sessionId
+        );
+    } catch (error) {
+        console.error('Unable to restart quiz:', error);
+        sessionSaveStatus.textContent = error.message;
+    } finally {
+        restartButton.disabled = false;
+    }
 }
 
 // Start a new quiz with different settings
@@ -441,6 +603,8 @@ function newQuiz() {
     quizContainer.classList.add('hidden');
     resultsContainer.classList.add('hidden');
     startScreen.classList.remove('hidden');
+    playerNameInput.value = '';
+    sessionSaveStatus.textContent = '';
 }
 
 // Set rating stars
@@ -533,16 +697,3 @@ function updateDifficultyBadgeColor() {
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
-
-// Add some sample high scores if none exist (for demo purposes)
-if (highScores.length === 0) {
-    highScores = [
-        { category: 'science', difficulty: 'hard', score: 180, total: 10, date: '2023-06-15' },
-        { category: 'history', difficulty: 'medium', score: 135, total: 10, date: '2023-06-14' },
-        { category: 'geography', difficulty: 'easy', score: 90, total: 10, date: '2023-06-13' },
-        { category: 'general', difficulty: 'medium', score: 120, total: 10, date: '2023-06-12' },
-        { category: 'science', difficulty: 'easy', score: 80, total: 10, date: '2023-06-11' }
-    ];
-    localStorage.setItem('quizHighScores', JSON.stringify(highScores));
-    displayHighScores();
-}

@@ -50,6 +50,17 @@ body {
     font-size: 2.5rem;
 }
 
+.attempt-counter {
+    margin: -18px 0 8px;
+    color: var(--gray-color);
+    font-weight: 600;
+}
+
+.start-status {
+    min-height: 1.5em;
+    color: var(--danger-color);
+}
+
 .settings {
     display: grid;
     grid-template-columns: 1fr;
@@ -93,6 +104,75 @@ body {
 .start-btn:hover {
     background: var(--secondary-color);
     transform: translateY(-2px);
+}
+
+.name-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(33, 37, 41, 0.55);
+}
+
+.name-form {
+    width: min(100%, 420px);
+    padding: 28px;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.name-form h2 {
+    margin-bottom: 6px;
+    color: var(--primary-color);
+}
+
+.name-form > p {
+    margin-bottom: 18px;
+}
+
+.name-form input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.name-error {
+    min-height: 1.5em;
+    color: var(--danger-color);
+}
+
+.name-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.name-actions button {
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.cancel-join-btn {
+    background: #e9ecef;
+    color: var(--dark-color);
+}
+
+.join-quiz-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.join-quiz-btn:hover {
+    background: var(--secondary-color);
 }
 
 .high-scores {
@@ -161,6 +241,11 @@ header {
     color: var(--dark-color);
 }
 
+.difficulty-badge.mixed {
+    background: #e7d8ff;
+    color: #4b2585;
+}
+
 .timer-score {
     display: flex;
     gap: 15px;
@@ -176,6 +261,20 @@ header {
 
 .timer i, .score i {
     font-size: 0.9rem;
+}
+
+.quit-btn {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 5px;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.quit-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
 }
 
 .quiz-area {
@@ -335,6 +434,11 @@ header {
     color: var(--accent-color);
 }
 
+.difficulty-badge.mixed {
+    background: rgba(140, 90, 200, 0.12);
+    color: #4b2585;
+}
+
 .result-actions {
     display: flex;
     justify-content: center;
@@ -477,159 +581,11 @@ header {
 
 @media (min-width: 768px) {
     .settings {
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 }
 
-/* Login Page Styles */
-.login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background-color: #f5f7fa;
-    padding: 20px;
-}
-
-.login-card, .register-card, .reset-card {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    padding: 30px;
-    width: 100%;
-    max-width: 400px;
-    transition: all 0.3s ease;
-}
-
-.login-card h1, .register-card h1, .reset-card h1 {
-    color: var(--primary-color);
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 1.8rem;
-}
-
-.login-card h1 i, .register-card h1 i, .reset-card h1 i {
-    margin-right: 10px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--dark-color);
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
-}
-
-.form-options {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    font-size: 0.9rem;
-}
-
-.remember-me {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.remember-me input {
-    margin: 0;
-}
-
-#forgotPassword, #registerLink, #loginLink, #backToLogin {
-    color: var(--primary-color);
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-#forgotPassword:hover, #registerLink:hover, #loginLink:hover, #backToLogin:hover {
-    color: var(--secondary-color);
-    text-decoration: underline;
-}
-
-.login-btn, .register-btn, .reset-btn {
-    width: 100%;
-    padding: 12px;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-bottom: 20px;
-}
-
-.login-btn:hover, .register-btn:hover, .reset-btn:hover {
-    background: var(--secondary-color);
-}
-
-.register-link, .login-link {
-    text-align: center;
-    font-size: 0.9rem;
-    color: var(--gray-color);
-}
-
-.message {
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 20px;
-    text-align: center;
-    font-weight: 600;
-}
-
-.message.success {
-    background: #d4edda;
-    color: #155724;
-}
-
-.message.error {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-/* Animation for switching forms */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.login-card, .register-card, .reset-card {
-    animation: fadeIn 0.3s ease-out;
-}
-
-/* Logout Button Styles */
-.logout-btn {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 5px;
-    transition: all 0.3s;
-    margin-left: 15px;
-}
-
-.logout-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
-}
-
-/* Adjust header layout to accommodate logout button */
+/* Keep quiz controls aligned in the header. */
 header {
     display: flex;
     justify-content: space-between;
@@ -649,18 +605,6 @@ header {
     gap: 15px;
     align-items: center;
     margin-left: auto; /* Push to the right */
-}
-
-/* Results screen logout button */
-.results-container .logout-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    color: var(--primary-color);
-}
-
-.results-container .logout-btn:hover {
-    background: rgba(67, 97, 238, 0.1);
 }
 
 /* Explanation Styles */

@@ -12,32 +12,28 @@
         <!-- Start Screen -->
         <div class="start-screen">
             <h1>Quiz Master</h1>
+            <p class="attempt-counter">Quiz attempts: <span id="attemptedQuizCount">Loading...</span></p>
+            <p class="start-status" role="status" aria-live="polite"></p>
             <div class="settings">
-                <div class="setting-group">
-                    <label for="category">Select Category:</label>
-                    <select id="category" class="setting-select">
-                        <option value="general">General Knowledge</option>
-                        <option value="science">Science</option>
-                        <option value="history">History</option>
-                        <option value="geography">Geography</option>
-                    </select>
-                </div>
-                
                 <div class="setting-group">
                     <label for="difficulty">Select Difficulty:</label>
                     <select id="difficulty" class="setting-select">
                         <option value="easy">Easy</option>
                         <option value="medium">Medium</option>
                         <option value="hard">Hard</option>
+                        <option value="mixed">Mixed</option>
                     </select>
                 </div>
                 
                 <div class="setting-group">
-                    <label for="question-type">Question Type:</label>
-                    <select id="question-type" class="setting-select">
-                        <option value="multiple">Multiple Choice</option>
-                        <option value="boolean">True/False</option>
-                        <option value="fill">Fill in Blank</option>
+                    <label for="time-budget">Total time budget:</label>
+                    <select id="time-budget" class="setting-select">
+                        <option value="2">2 minutes</option>
+                        <option value="5" selected>5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15">15 minutes</option>
+                        <option value="20">20 minutes</option>
+                        <option value="30">30 minutes</option>
                     </select>
                 </div>
             </div>
@@ -48,6 +44,22 @@
                 <h3>High Scores</h3>
                 <div class="scores-list"></div>
             </div>
+        </div>
+
+        <div class="name-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="name-dialog-title">
+            <form class="name-form" id="nameForm">
+                <h2 id="name-dialog-title">Join the quiz</h2>
+                <p>Enter your name to start.</p>
+                <div class="setting-group">
+                    <label for="playerName">Your name</label>
+                    <input id="playerName" name="playerName" type="text" maxlength="80" autocomplete="name" required>
+                </div>
+                <p class="name-error" role="status" aria-live="polite"></p>
+                <div class="name-actions">
+                    <button class="cancel-join-btn" type="button">Cancel</button>
+                    <button class="join-quiz-btn" type="submit">Join quiz</button>
+                </div>
+            </form>
         </div>
         
         <!-- Quiz Container -->
@@ -62,9 +74,7 @@
                     <span class="score"><i class="fas fa-star"></i> 0</span>
                     <span class="progress">Question 1 of 10</span>
                 </div>
-                <button class="logout-btn" title="Logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
+                <button class="quit-btn" type="button">Quit Quiz</button>
             </header>
             
             <div class="quiz-area">
@@ -89,14 +99,14 @@
         
         <!-- Results Screen -->
         <div class="results-container hidden">
-            <button class="logout-btn" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
             <div class="results-content">
-                <h2>Quiz Completed!</h2>
+                <h2 class="results-heading">Quiz Completed!</h2>
+                <p class="session-save-status" role="status" aria-live="polite"></p>
                 <div class="result-stats">
                     <p>Final Score: <span class="final-score">0</span></p>
-                    <p>Correct Answers: <span class="correct-answers">0</span>/<span class="total-questions">0</span></p>
+                    <p>Correct Answers: <span class="correct-answers">0</span>/<span class="answered-questions">0</span></p>
+                    <p>Questions Answered: <span class="answered-questions">0</span>/<span class="total-questions">0</span></p>
+                    <p>Time Budget: <span class="time-budget-result">5</span> minutes</p>
                     <p>Time Remaining: <span class="time-remaining">0</span>s</p>
                 </div>
                 
@@ -131,22 +141,6 @@
         </div>
     </div>
     
-    <script src="questions.js"></script>
     <script src="script.js"></script>
-    <script>
-        // Check authentication before allowing access
-        document.addEventListener('DOMContentLoaded', () => {
-            const rememberedUser = localStorage.getItem('currentUser');
-            const sessionUser = sessionStorage.getItem('currentUser');
-            
-            if (!rememberedUser && !sessionUser) {
-                window.location.href = 'index.html';
-            }
-            
-            // You can use the user data if needed
-            const currentUser = JSON.parse(rememberedUser || sessionUser);
-            console.log('Current user:', currentUser);
-        });
-    </script>
 </body>
 </html>

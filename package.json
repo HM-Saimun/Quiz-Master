@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "db:check": "node server.js --check-only",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "mysql": "^2.18.1"
+  }
+}
